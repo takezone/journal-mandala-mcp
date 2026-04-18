@@ -1,0 +1,40 @@
+{
+  "name": "journal-mandala-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for writing to Journal Mandala (Google Drive backed journal app) from Claude",
+  "type": "module",
+  "bin": {
+    "journal-mandala-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/takezone/journal-mandala-mcp.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "journal"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3"
+  }
+}
