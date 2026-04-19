@@ -279,5 +279,130 @@ server.registerTool(
   },
 )
 
+server.registerTool(
+  'find_entries',
+  {
+    title: 'Find recent Journal Mandala entries',
+    description:
+      '最近の日記エントリ・Todo を直近更新順で取得する。' +
+      'id を取得してから update_entry で編集する流れで使う。' +
+      '返り値には id, entry_type, entry_date, title, tags, star_rating, プレビュー等が含まれる。',
+    inputSchema: {
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe('取得件数（デフォルト 20、最大 100）'),
+    },
+  },
+  async (args) => {
+    try {
+      const url = new URL(`${API_URL}/api/entries`)
+      if (args.limit) url.searchParams.set('limit', String(args.limit))
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${API_KEY}` },
+      })
+      const data = await res.json().catch(() => ({})) as {
+        ok?: boolean
+        entries?: unknown[]
+        account?: string
+        error?: string
+      }
+      if (!res.ok || !data.ok) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `API エラー (status ${res.status}): ${data.error ?? ''}` }],
+        }
+      }
+      return {
+        content: [{ type: 'text', text: JSON.stringify(data.entries, null, 2) }],
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { isError: true, content: [{ type: 'text', text: `ネットワークエラー: ${msg}` }] }
+    }
+  },
+)
+
+server.registerTool(
+  'update_entry',
+  {
+    title: 'Update existing Journal Mandala entry',
+    description:
+      '既存のエントリ・Todo を id 指定で部分更新する。' +
+      '指定したフィールドのみ上書きされる（省略したフィールドは維持）。' +
+      'id は find_entries で取得するか、ユーザーから提供されたものを使う。' +
+      'タグ修正など軽微な修正から、星評価の変更、todo_status の変更まで対応。',
+    inputSchema: {
+      id: z.string().describe('エントリの id（必須）'),
+      title: z.string().optional().describe('タイトル'),
+      event: z.string().optional().describe('出来事'),
+      thought: z.string().optional().describe('思考・メモ'),
+      entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('日付 YYYY-MM-DD'),
+      entry_time: z.string().regex(/^\d{2}:\d{2}$/).optional().describe('時刻 HH:MM'),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe(
+          '**文字列の配列**として渡すこと。正: ["仕事","運動"]。誤: ["[\\"仕事\\",\\"運動\\"]"]',
+        ),
+      star_rating: z
+        .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)])
+        .optional()
+        .describe('1-5 評価'),
+      todo_status: z
+        .enum(['pending', 'in_progress', 'completed', 'cancelled'])
+        .optional()
+        .describe('Todo状態'),
+      todo_points: z.number().int().nonnegative().optional().describe('Todoポイント'),
+      due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('期限 YYYY-MM-DD'),
+      is_today: z.boolean().optional().describe('今日やるフラグ'),
+    },
+  },
+  async (args) => {
+    if (!args.id) {
+      return { isError: true, content: [{ type: 'text', text: 'Error: id は必須です' }] }
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/entries`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(args),
+      })
+      const data = await res.json().catch(() => ({})) as {
+        ok?: boolean
+        entry?: { id: string; entry_date: string; driveFileId?: string }
+        account?: string
+        error?: string
+      }
+      if (!res.ok || !data.ok) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: `API エラー (status ${res.status}): ${data.error ?? ''}` }],
+        }
+      }
+      return {
+        content: [
+          {
+            type: 'text',
+            text: [
+              `✓ エントリ ${data.entry?.id} を更新しました (${data.account ?? 'default'} アカウント)`,
+              data.entry?.driveFileId ? `  drive: ${data.entry.driveFileId}` : '',
+            ].filter(Boolean).join('\n'),
+          },
+        ],
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { isError: true, content: [{ type: 'text', text: `ネットワークエラー: ${msg}` }] }
+    }
+  },
+)
+
 const transport = new StdioServerTransport()
 await server.connect(transport)
