@@ -162,5 +162,122 @@ server.registerTool(
   },
 )
 
+server.registerTool(
+  'add_todo',
+  {
+    title: 'Add Journal Mandala todo',
+    description:
+      'Journal Mandala に新しい Todo（タスク）を追加する。' +
+      'title はタスク名で必須。' +
+      'due_date (期限), todo_status (状態), is_today (今日やる) などを任意で指定可能。' +
+      '日記エントリではなく、実行すべきタスクを登録するときに使う。',
+    inputSchema: {
+      title: z.string().describe('タスク名（必須）'),
+      thought: z
+        .string()
+        .optional()
+        .describe('タスクに関するメモ・詳細（任意）'),
+      entry_date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe('作成日 YYYY-MM-DD（省略時は日本時間での今日）'),
+      due_date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional()
+        .describe('期限日 YYYY-MM-DD（任意）'),
+      todo_status: z
+        .enum(['pending', 'in_progress', 'completed', 'cancelled'])
+        .optional()
+        .describe('タスク状態（省略時は pending）'),
+      todo_points: z
+        .number()
+        .int()
+        .nonnegative()
+        .optional()
+        .describe('見積もりポイント（任意）'),
+      is_today: z
+        .boolean()
+        .optional()
+        .describe('今日やるリストに入れるか（任意）'),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'タグの配列（任意）。**文字列の配列として渡すこと**。正: ["仕事", "緊急"]。誤: ["[\\"仕事\\",\\"緊急\\"]"]',
+        ),
+    },
+  },
+  async (args) => {
+    if (!args.title) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: 'Error: title (タスク名) は必須です' }],
+      }
+    }
+
+    const body = {
+      entry_type: 'todo' as const,
+      entry_date: args.entry_date ?? localDateJST(),
+      title: args.title,
+      thought: args.thought,
+      tags: args.tags,
+      todo_status: args.todo_status ?? 'pending',
+      todo_points: args.todo_points,
+      due_date: args.due_date,
+      is_today: args.is_today,
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/entries`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+      const data = await res.json().catch(() => ({})) as {
+        ok?: boolean
+        entry?: { id: string; entry_date: string; driveFileId?: string }
+        account?: string
+        error?: string
+      }
+
+      if (!res.ok || !data.ok) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: `API エラー (status ${res.status}): ${data.error ?? JSON.stringify(data)}`,
+            },
+          ],
+        }
+      }
+
+      const summary = [
+        `✓ Todo を追加しました (${data.account ?? 'default'} アカウント)`,
+        `  id: ${data.entry?.id}`,
+        `  date: ${data.entry?.entry_date}`,
+        args.due_date ? `  due: ${args.due_date}` : '',
+        data.entry?.driveFileId ? `  drive: ${data.entry.driveFileId}` : '',
+      ].filter(Boolean).join('\n')
+
+      return {
+        content: [{ type: 'text', text: summary }],
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return {
+        isError: true,
+        content: [{ type: 'text', text: `ネットワークエラー: ${msg}` }],
+      }
+    }
+  },
+)
+
 const transport = new StdioServerTransport()
 await server.connect(transport)
