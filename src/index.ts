@@ -75,7 +75,12 @@ server.registerTool(
       tags: z
         .array(z.string())
         .optional()
-        .describe('タグの配列（任意）'),
+        .describe(
+          'タグの配列（任意）。' +
+            '**文字列の配列として渡すこと**。正しい例: ["仕事", "運動"]。' +
+            '誤り例: ["[\\"仕事\\",\\"運動\\"]"] ← 配列を JSON 文字列化して要素にしないこと。' +
+            '各要素は1つのタグ名のみの短い文字列。',
+        ),
       star_rating: z
         .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)])
         .optional()
