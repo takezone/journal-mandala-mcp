@@ -70,7 +70,12 @@ server.registerTool('add_journal_entry', {
         star_rating: z
             .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)])
             .optional()
-            .describe('1-5 の評価（任意）'),
+            .describe('1-5 の評価（任意）。目安: ' +
+            '1 = 微妙・ネガティブな出来事、' +
+            '2 = 普通の1日・デフォルト、' +
+            '3 = そこそこ良いことがあった日、' +
+            '4 = かなり良いことがあった日、' +
+            '5 = 人生の一大イベント級。安易に 5 を選ばず、基本は 2、具体的な良い出来事があれば 3 か 4 を選ぶこと。'),
     },
 }, async (args) => {
     if (!args.title && !args.event && !args.thought) {
