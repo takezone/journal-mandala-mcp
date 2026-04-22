@@ -187,6 +187,44 @@ rm -f .env.vercel .vercel/project.json && rmdir .vercel 2>/dev/null
 
 同じGoogleアカウントで再enrollすると、古いキーは自動失効し新しいキーに差し替わる。
 
+### 別のMac（2台目以降）にセットアップする
+
+**APIキーはGoogleアカウントに紐付いているので、マシンが変わっても同じキーが使える**（再enroll不要）。
+
+```sh
+# 1. (未インストールなら) Node.js をインストール
+brew install node
+
+# 2. MCPサーバーをグローバルインストール
+npm install -g --install-links github:takezone/journal-mandala-mcp
+
+# 3. ~/.claude.json に mcpServers を追記（既存設定を壊さないよう python でマージ推奨）
+python3 - <<'PY'
+import json, os
+p = os.path.expanduser('~/.claude.json')
+with open(p) as f: c = json.load(f)
+c.setdefault('mcpServers', {})
+c['mcpServers'].update({
+    'journal-mandala-personal': {
+        'command': 'journal-mandala-mcp',
+        'env': {'JOURNAL_MANDALA_API_KEY': 'jm_XXXXX'}  # ←実キー
+    },
+    'journal-mandala-work': {
+        'command': 'journal-mandala-mcp',
+        'env': {'JOURNAL_MANDALA_API_KEY': 'jm_YYYYY'}  # ←実キー
+    },
+})
+with open(p, 'w') as f: json.dump(c, f, indent=2, ensure_ascii=False)
+print('updated')
+PY
+
+# 4. Claude Code を再起動（/exit → claude 再実行）
+```
+
+**既存キーが手元にない場合:** 家のMacの `~/.claude.json` からコピーするか、上記「復旧手順」でVercelから取得する。
+
+**分散運用のすすめ:** 家Mac と 会社Mac で**別キー**を使うと（例: `?label=personal-home` / `?label=personal-work`）、片方が漏れても他方に影響せず、ローテーションも片側ずつで済む。同じキーで揃える方が利便性は高いが、好みで選ぶ。
+
 ## ライセンス
 
 MIT
