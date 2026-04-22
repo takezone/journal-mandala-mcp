@@ -15,10 +15,20 @@
 `npm` でグローバルにインストールします。
 
 ```sh
-npm install -g github:takezone/journal-mandala-mcp
+npm install -g --install-links github:takezone/journal-mandala-mcp
 ```
 
-更新するときは同じコマンドを再実行します。
+**`--install-links` は必須**（付けないと一時ディレクトリへのsymlinkになって起動できなくなる）。
+
+更新するときも同じコマンドを再実行。もし過去に `--install-links` なしで入れて壊れている場合は:
+
+```sh
+npm uninstall -g journal-mandala-mcp
+# 残骸掃除 (npm prefix は `npm prefix -g` で確認)
+rm -rf $(npm prefix -g)/lib/node_modules/journal-mandala-mcp
+rm -rf $(npm prefix -g)/lib/node_modules/.journal-mandala-mcp-*
+npm install -g --install-links github:takezone/journal-mandala-mcp
+```
 
 ## Claude Desktop の設定
 
